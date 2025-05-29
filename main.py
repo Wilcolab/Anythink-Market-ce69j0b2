@@ -38,7 +38,10 @@ FILTERS = {
     "brightness": "Increase brightness",
     "contrast": "Increase contrast",
     "invert": "Invert colors",
-    "sepia": "Sepia tone effect"
+    "sepia": "Sepia tone effect",
+    "black_white": "Black & White effect",
+    "vintage": "Vintage effect",
+    "glitch": "Glitch effect"
 }
 
 @app.get("/", response_class=HTMLResponse)
@@ -183,6 +186,81 @@ async def api_apply_filter(
                 pixels[px, py] = (tr, tg, tb)
         
         filtered_img = rgb_img
+    elif selected_filter == "black_white":
+        # Convert to grayscale first
+        gray_img = img.convert('L')
+        # Create a new image with black and white pixels
+        bw_img = Image.new('RGB', gray_img.size)
+        pixels = bw_img.load()
+        gray_pixels = gray_img.load()
+        
+        for py in range(gray_img.height):
+            for px in range(gray_img.width):
+                # Use 128 as threshold for black/white conversion
+                pixel = 0 if gray_pixels[px, py] < 128 else 255
+                pixels[px, py] = (pixel, pixel, pixel)
+        
+        filtered_img = bw_img
+    elif selected_filter == "vintage":
+        # Convert to RGB mode if it's not already
+        rgb_img = img.convert('RGB')
+        width, height = rgb_img.size
+        pixels = rgb_img.load()
+        
+        for py in range(height):
+            for px in range(width):
+                r, g, b = rgb_img.getpixel((px, py))
+                
+                # Add vintage effect by adjusting color channels
+                tr = int(r * 0.9)  # Reduce red channel
+                tg = int(g * 0.8)  # Reduce green channel
+                tb = int(b * 0.7)  # Reduce blue channel
+                
+                # Add slight sepia tone
+                tr = int(tr * 1.1)
+                tg = int(tg * 0.9)
+                tb = int(tb * 0.8)
+                
+                # Ensure values don't exceed 255
+                tr = min(255, tr)
+                tg = min(255, tg)
+                tb = min(255, tb)
+                
+                pixels[px, py] = (tr, tg, tb)
+        
+        filtered_img = rgb_img
+    elif selected_filter == "glitch":
+        # Convert to RGB mode if it's not already
+        rgb_img = img.convert('RGB')
+        width, height = rgb_img.size
+        pixels = rgb_img.load()
+        
+        # Create a copy of the image for glitch effect
+        glitch_img = rgb_img.copy()
+        glitch_pixels = glitch_img.load()
+        
+        # Apply random horizontal shifts
+        import random
+        for y in range(height):
+            # Randomly shift some rows
+            if random.random() < 0.1:  # 10% chance for each row
+                shift = random.randint(-20, 20)  # Random shift between -20 and 20 pixels
+                for x in range(width):
+                    new_x = (x + shift) % width
+                    glitch_pixels[x, y] = pixels[new_x, y]
+        
+        # Apply color channel shifts
+        for y in range(height):
+            for x in range(width):
+                r, g, b = glitch_pixels[x, y]
+                # Randomly shift color channels
+                if random.random() < 0.1:  # 10% chance for each pixel
+                    r = min(255, r + random.randint(-30, 30))
+                    g = min(255, g + random.randint(-30, 30))
+                    b = min(255, b + random.randint(-30, 30))
+                glitch_pixels[x, y] = (r, g, b)
+        
+        filtered_img = glitch_img
     else:
         # No filter or unknown filter
         filtered_img = img
