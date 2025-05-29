@@ -2,185 +2,203 @@
 
 {% block extra_head %}
 <style>
-    .preview-container {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 2rem;
+    .sketch-header {
+        text-align: center;
+        font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+        font-size: 2.5rem;
+        margin-top: 2rem;
+        margin-bottom: 1.5rem;
+        font-weight: bold;
+    }
+    .sketch-download {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+    .sketch-image-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
         margin-bottom: 2rem;
     }
-    
-    .filter-active {
-        border-color: var(--primary-color);
-        background-color: rgba(99, 102, 241, 0.1);
+    .sketch-arrow {
+        font-size: 2.5rem;
+        cursor: pointer;
+        user-select: none;
+        margin: 0 2rem;
+        font-family: 'Comic Sans MS', 'Comic Sans', cursive;
     }
-    
-    .download-container {
-        text-align: center;
-        margin-top: 1rem;
-        display: none;
+    .sketch-image {
+        border: 3px solid #222;
+        border-radius: 2rem;
+        width: 350px;
+        height: 350px;
+        object-fit: contain;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .sketch-filters {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .sketch-filter-btn {
+        min-width: 120px;
+        padding: 0.7rem 1.2rem;
+        border: 2.5px solid #222;
+        border-radius: 0.8rem;
+        background: #fff;
+        font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+    }
+    .sketch-filter-btn.selected {
+        background: #bfe0ff;
+        color: #222;
+        border-color: #3399ff;
+    }
+    .sketch-row {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="card">
-    <h2>Image Filters</h2>
-    <div class="preview-container">
-        <div class="preview-box">
-            <div class="preview-title">Original</div>
-            <img src="{{ image_data }}" alt="Original image" class="preview-image" id="original-image">
-        </div>
-        <div class="preview-box">
-            <div class="preview-title">Filtered: <span id="current-filter">None</span></div>
-            <img src="{{ image_data }}" alt="Filtered image" class="preview-image" id="filtered-image">
-            <div class="download-container" id="download-container">
-                <a href="#" class="button" id="download-button">Download</a>
-            </div>
-        </div>
-    </div>
-    
-    <div>
-        <input type="hidden" name="image_id" id="image-id" value="{{ image_id }}">
-        
-        <div class="filter-container">
-            <div class="filter-option" data-filter="none">
-                <div class="filter-name">Original</div>
-                <div class="filter-description">No filter applied</div>
-            </div>
-            {% for filter_id, filter_name in filters.items() %}
-            <div class="filter-option" data-filter="{{ filter_id }}">
-                <div class="filter-name">{{ filter_id|capitalize }}</div>
-                <div class="filter-description">{{ filter_name }}</div>
-            </div>
-            {% endfor %}
-        </div>
-        
-        <div class="button-container">
-            <a href="/" class="button button-secondary">Upload New Image</a>
-        </div>
-        
-        <div class="loading" id="loading">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M12 6v6l4 2"></path>
-            </svg>
-            <span>Processing Image...</span>
-        </div>
-    </div>
+<div class="sketch-header">Image Filter App</div>
+<div class="sketch-download">
+    <a href="#" class="sketch-filter-btn" id="download-button">DOWNLOAD</a>
+</div>
+<div class="sketch-image-container">
+    <span class="sketch-arrow" id="arrow-left">&#60;</span>
+    <img src="{{ image_data }}" alt="Filtered image" class="sketch-image" id="filtered-image">
+    <span class="sketch-arrow" id="arrow-right">&#62;</span>
+</div>
+<input type="hidden" name="image_id" id="image-id" value="{{ image_id }}">
+<div class="sketch-filters" id="sketch-filters">
+    <!-- Filter buttons will be rendered by JS for two rows -->
+</div>
+<div style="text-align:center; margin-bottom:2rem;">
+    <a href="/" class="sketch-filter-btn" style="background:#eee;">Upload New Image</a>
+</div>
+<div class="loading" id="loading" style="display:none; text-align:center;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 6v6l4 2"></path>
+    </svg>
+    <span>Processing Image...</span>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const filterOptions = document.querySelectorAll('.filter-option');
-        const imageId = document.getElementById('image-id').value;
-        const filteredImage = document.getElementById('filtered-image');
-        const originalImage = document.getElementById('original-image');
-        const currentFilterText = document.getElementById('current-filter');
-        const loadingIndicator = document.getElementById('loading');
-        const downloadContainer = document.getElementById('download-container');
-        const downloadButton = document.getElementById('download-button');
-        
-        let currentImageData = null;
-        let currentFilterName = 'None';
-        
-        // Hide loading indicator initially
-        loadingIndicator.style.display = 'none';
-        
-        filterOptions.forEach(option => {
-            option.addEventListener('click', function() {
-                // Remove active class from all options
-                filterOptions.forEach(opt => opt.classList.remove('filter-active'));
-                
-                // Add active class to selected option
-                this.classList.add('filter-active');
-                
-                const selectedFilter = this.getAttribute('data-filter');
-                currentFilterName = selectedFilter === 'none' ? 'None' : selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1);
-                currentFilterText.textContent = currentFilterName;
-                
-                // If "none" is selected, show the original image
-                if (selectedFilter === 'none') {
-                    filteredImage.src = originalImage.src;
-                    downloadContainer.style.display = 'none';
-                    currentImageData = null;
-                    return;
-                }
-                
-                // Show loading indicator
-                loadingIndicator.style.display = 'flex';
-                
-                // Create form data
-                const formData = new FormData();
-                formData.append('image_id', imageId);
-                formData.append('selected_filter', selectedFilter);
-                
-                // Send request to apply filter
-                fetch('/api/apply-filter', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Update filtered image source with base64 data
-                    filteredImage.src = data.image_data;
-                    currentImageData = data.image_data;
-                    
-                    // Show download button
-                    downloadContainer.style.display = 'block';
-                    
-                    // Hide loading indicator
-                    loadingIndicator.style.display = 'none';
-                })
-                .catch(error => {
-                    console.error('Error applying filter:', error);
-                    loadingIndicator.style.display = 'none';
-                });
-            });
-        });
-        
-        // Handle download button click
-        downloadButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            if (!currentImageData) return;
-            
-            // Create a form for the download POST request
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/download';
-            form.style.display = 'none';
-            
-            // Add the image data
-            const imageDataInput = document.createElement('input');
-            imageDataInput.type = 'hidden';
-            imageDataInput.name = 'image_data';
-            imageDataInput.value = currentImageData;
-            form.appendChild(imageDataInput);
-            
-            // Add the filter name
-            const filterNameInput = document.createElement('input');
-            filterNameInput.type = 'hidden';
-            filterNameInput.name = 'filter_name';
-            filterNameInput.value = currentFilterName.toLowerCase();
-            form.appendChild(filterNameInput);
-            
-            // Submit the form
-            document.body.appendChild(form);
-            form.submit();
-            
-            // Clean up
-            setTimeout(() => {
-                document.body.removeChild(form);
-            }, 1000);
-        });
-        
-        // Select "Original" by default
-        const originalOption = document.querySelector('.filter-option[data-filter="none"]');
-        if (originalOption) {
-            originalOption.classList.add('filter-active');
+    // --- Filter Data ---
+    const FILTERS = [
+        { id: 'none', name: 'ORIGINAL' },
+        {% for filter_id, filter_name in filters.items() %}
+        { id: '{{ filter_id }}', name: '{{ filter_id|replace('_', ' ')|upper }}' },
+        {% endfor %}
+    ];
+    // --- Render Filter Buttons in Two Rows ---
+    function renderFilterButtons(selectedIdx = 0) {
+        const container = document.getElementById('sketch-filters');
+        container.innerHTML = '';
+        const buttonsPerRow = 5;
+        for (let i = 0; i < FILTERS.length; i += buttonsPerRow) {
+            const row = document.createElement('div');
+            row.className = 'sketch-row';
+            for (let j = i; j < i + buttonsPerRow && j < FILTERS.length; j++) {
+                const filter = FILTERS[j];
+                const btn = document.createElement('button');
+                btn.className = 'sketch-filter-btn' + (j === selectedIdx ? ' selected' : '');
+                btn.textContent = filter.name;
+                btn.dataset.filter = filter.id;
+                btn.onclick = () => selectFilter(j);
+                row.appendChild(btn);
+            }
+            container.appendChild(row);
         }
-    });
+    }
+    // --- Filter Navigation ---
+    let currentFilterIdx = 0;
+    function selectFilter(idx) {
+        currentFilterIdx = idx;
+        renderFilterButtons(idx);
+        applyFilter(FILTERS[idx].id);
+    }
+    document.getElementById('arrow-left').onclick = function() {
+        currentFilterIdx = (currentFilterIdx - 1 + FILTERS.length) % FILTERS.length;
+        selectFilter(currentFilterIdx);
+    };
+    document.getElementById('arrow-right').onclick = function() {
+        currentFilterIdx = (currentFilterIdx + 1) % FILTERS.length;
+        selectFilter(currentFilterIdx);
+    };
+    // --- Filter Application Logic ---
+    const imageId = document.getElementById('image-id').value;
+    const filteredImage = document.getElementById('filtered-image');
+    const loadingIndicator = document.getElementById('loading');
+    let currentImageData = null;
+    function applyFilter(filterId) {
+        if (filterId === 'none') {
+            filteredImage.src = '{{ image_data }}';
+            currentImageData = null;
+            document.getElementById('download-button').style.display = 'none';
+            return;
+        }
+        loadingIndicator.style.display = 'inline-block';
+        const formData = new FormData();
+        formData.append('image_id', imageId);
+        formData.append('selected_filter', filterId);
+        fetch('/api/apply-filter', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            filteredImage.src = data.image_data;
+            currentImageData = data.image_data;
+            document.getElementById('download-button').style.display = 'inline-block';
+            loadingIndicator.style.display = 'none';
+        })
+        .catch(error => {
+            console.error('Error applying filter:', error);
+            loadingIndicator.style.display = 'none';
+        });
+    }
+    // --- Download Button ---
+    document.getElementById('download-button').onclick = function(e) {
+        e.preventDefault();
+        if (!currentImageData) return;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/download';
+        form.style.display = 'none';
+        const imageDataInput = document.createElement('input');
+        imageDataInput.type = 'hidden';
+        imageDataInput.name = 'image_data';
+        imageDataInput.value = currentImageData;
+        form.appendChild(imageDataInput);
+        const filterNameInput = document.createElement('input');
+        filterNameInput.type = 'hidden';
+        filterNameInput.name = 'filter_name';
+        filterNameInput.value = FILTERS[currentFilterIdx].name.toLowerCase();
+        form.appendChild(filterNameInput);
+        document.body.appendChild(form);
+        form.submit();
+        setTimeout(() => {
+            document.body.removeChild(form);
+        }, 1000);
+    };
+    // --- Initial Render ---
+    renderFilterButtons(0);
+    document.getElementById('download-button').style.display = 'none';
 </script>
 {% endblock %} 
